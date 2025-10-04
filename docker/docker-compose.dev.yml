@@ -1,0 +1,29 @@
+version: '3.8'
+
+# Development override for docker-compose.yml
+services:
+  api:
+    environment:
+      DEBUG: "true"
+      LOG_LEVEL: DEBUG
+      ENVIRONMENT: development
+    volumes:
+      - ../backend:/app
+      - ../ai:/app/ai
+      - ../tests:/app/tests
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload --log-level debug
+    
+  # Development tools
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    container_name: voiceai_redis_commander
+    environment:
+      REDIS_HOSTS: local:redis:6379
+    ports:
+      - "8081:8081"
+    depends_on:
+      - redis
+    networks:
+      - voiceai_network
+    profiles:
+      - tools

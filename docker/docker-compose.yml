@@ -1,0 +1,87 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: voiceai_postgres
+    environment:
+      POSTGRES_USER: voiceai
+      POSTGRES_PASSWORD: voiceai_dev
+      POSTGRES_DB: voiceai_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U voiceai"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - voiceai_network
+
+  redis:
+    image: redis:7-alpine
+    container_name: voiceai_redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - voiceai_network
+
+  api:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    container_name: voiceai_api
+    ports:
+      - "8000:8000"
+    volumes:
+      - ../backend:/app
+      - ../ai:/app/ai
+      - ../tests:/app/tests
+    environment:
+      DATABASE_URL: postgresql://voiceai:voiceai_dev@postgres:5432/voiceai_db
+      REDIS_URL: redis://redis:6379
+      ENVIRONMENT: development
+      DEBUG: "true"
+      LOG_LEVEL: INFO
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - voiceai_network
+    restart: unless-stopped
+
+  # PgAdmin for database management (optional)
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: voiceai_pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@voiceai.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+    ports:
+      - "5050:80"
+    depends_on:
+      - postgres
+    networks:
+      - voiceai_network
+    profiles:
+      - tools
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  voiceai_network:
+    driver: bridge
