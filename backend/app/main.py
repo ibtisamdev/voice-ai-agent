@@ -97,6 +97,39 @@ app.include_router(
     tags=["health"]
 )
 
+# Import and include new API routers
+from .api.v1 import llm, rag, documents, voice, voice_ws
+
+app.include_router(
+    llm.router,
+    prefix=f"{settings.API_V1_STR}/llm",
+    tags=["llm"]
+)
+
+app.include_router(
+    rag.router,
+    prefix=f"{settings.API_V1_STR}/rag",
+    tags=["rag"]
+)
+
+app.include_router(
+    documents.router,
+    prefix=f"{settings.API_V1_STR}/documents",
+    tags=["documents"]
+)
+
+app.include_router(
+    voice.router,
+    prefix=f"{settings.API_V1_STR}/voice",
+    tags=["voice"]
+)
+
+app.include_router(
+    voice_ws.router,
+    prefix=f"{settings.API_V1_STR}/ws",
+    tags=["websockets"]
+)
+
 
 @app.on_event("startup")
 async def startup_event():
@@ -104,6 +137,28 @@ async def startup_event():
     logger.info(f"Starting {settings.PROJECT_NAME}")
     logger.info(f"Environment: {settings.ENVIRONMENT}")
     logger.info(f"Debug mode: {settings.DEBUG}")
+    
+    # Initialize voice services
+    try:
+        from ai.voice import audio_processor, stt_service, tts_service
+        from ai.conversation import conversation_state_manager, dialog_flow_engine
+        from ai.decision_engine import intent_classifier
+        
+        logger.info("Initializing voice services...")
+        
+        # Initialize in dependency order
+        await audio_processor.initialize()
+        await stt_service.initialize()
+        await tts_service.initialize()
+        await conversation_state_manager.initialize()
+        await dialog_flow_engine.initialize()
+        await intent_classifier.initialize()
+        
+        logger.info("Voice services initialized successfully")
+        
+    except Exception as e:
+        logger.error(f"Failed to initialize voice services: {e}")
+        # Continue startup even if voice services fail
 
 
 @app.on_event("shutdown")

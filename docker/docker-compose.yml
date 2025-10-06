@@ -47,12 +47,137 @@ services:
       - ../backend:/app
       - ../ai:/app/ai
       - ../tests:/app/tests
+      - whisper_models:/app/models/whisper
+      - tts_models:/app/models/tts
+      - audio_cache:/app/cache/audio
     environment:
       DATABASE_URL: postgresql://voiceai:voiceai_dev@postgres:5432/voiceai_db
       REDIS_URL: redis://redis:6379
       ENVIRONMENT: development
       DEBUG: "true"
       LOG_LEVEL: INFO
+      OLLAMA_BASE_URL: http://ollama:11434
+      CHROMA_HOST: chromadb
+      CHROMA_PORT: 8000
+      # Voice service configuration
+      WHISPER_MODEL_SIZE: base
+      TTS_DEFAULT_ENGINE: coqui
+      VOICE_CACHE_ENABLED: "true"
+      # Phase 3: CRM Configuration
+      ZOHO_CLIENT_ID: ${ZOHO_CLIENT_ID:-}
+      ZOHO_CLIENT_SECRET: ${ZOHO_CLIENT_SECRET:-}
+      ZOHO_REDIRECT_URI: ${ZOHO_REDIRECT_URI:-http://localhost:8000/api/v1/crm/auth/callback}
+      ZOHO_SANDBOX_MODE: ${ZOHO_SANDBOX_MODE:-true}
+      # Telephony Configuration
+      SIP_SERVER: ${SIP_SERVER:-}
+      SIP_USERNAME: ${SIP_USERNAME:-}
+      SIP_PASSWORD: ${SIP_PASSWORD:-}
+      SIP_DOMAIN: ${SIP_DOMAIN:-}
+      SIP_PORT: ${SIP_PORT:-5060}
+      MAX_CONCURRENT_CALLS: ${MAX_CONCURRENT_CALLS:-50}
+      # Background Task Configuration
+      CELERY_BROKER_URL: redis://redis:6379/1
+      CELERY_RESULT_BACKEND: redis://redis:6379/2
+      # Optional external API keys (set in .env file)
+      # ELEVENLABS_API_KEY: ${ELEVENLABS_API_KEY:-}
+      # AZURE_SPEECH_KEY: ${AZURE_SPEECH_KEY:-}
+      # AZURE_SPEECH_REGION: ${AZURE_SPEECH_REGION:-eastus}
+      # TWILIO_ACCOUNT_SID: ${TWILIO_ACCOUNT_SID:-}
+      # TWILIO_AUTH_TOKEN: ${TWILIO_AUTH_TOKEN:-}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - voiceai_network
+    restart: unless-stopped
+
+  # Ollama LLM Service
+  ollama:
+    image: ollama/ollama:latest
+    container_name: voiceai_ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    environment:
+      - OLLAMA_KEEP_ALIVE=24h
+      - OLLAMA_HOST=0.0.0.0
+    networks:
+      - voiceai_network
+    restart: unless-stopped
+    # Uncomment for GPU support
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: 1
+    #           capabilities: [gpu]
+
+  # ChromaDB Vector Database
+  chromadb:
+    image: chromadb/chroma:latest
+    container_name: voiceai_chromadb
+    ports:
+      - "8001:8000"
+    volumes:
+      - chroma_data:/chroma/chroma
+    environment:
+      - CHROMA_SERVER_HOST=0.0.0.0
+      - CHROMA_SERVER_HTTP_PORT=8000
+    networks:
+      - voiceai_network
+    restart: unless-stopped
+
+  # Celery Worker for background tasks
+  celery_worker:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    container_name: voiceai_celery_worker
+    command: celery -A app.core.celery worker --loglevel=info
+    volumes:
+      - ../backend:/app
+      - ../ai:/app/ai
+    environment:
+      DATABASE_URL: postgresql://voiceai:voiceai_dev@postgres:5432/voiceai_db
+      REDIS_URL: redis://redis:6379
+      CELERY_BROKER_URL: redis://redis:6379/1
+      CELERY_RESULT_BACKEND: redis://redis:6379/2
+      ENVIRONMENT: development
+      # Inherit other environment variables from API service
+      ZOHO_CLIENT_ID: ${ZOHO_CLIENT_ID:-}
+      ZOHO_CLIENT_SECRET: ${ZOHO_CLIENT_SECRET:-}
+      SIP_SERVER: ${SIP_SERVER:-}
+      SIP_USERNAME: ${SIP_USERNAME:-}
+      SIP_PASSWORD: ${SIP_PASSWORD:-}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - voiceai_network
+    restart: unless-stopped
+
+  # Celery Beat for scheduled tasks
+  celery_beat:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    container_name: voiceai_celery_beat
+    command: celery -A app.core.celery beat --loglevel=info
+    volumes:
+      - ../backend:/app
+      - celery_beat_data:/app/celerybeat-data
+    environment:
+      DATABASE_URL: postgresql://voiceai:voiceai_dev@postgres:5432/voiceai_db
+      REDIS_URL: redis://redis:6379
+      CELERY_BROKER_URL: redis://redis:6379/1
+      CELERY_RESULT_BACKEND: redis://redis:6379/2
+      ENVIRONMENT: development
     depends_on:
       postgres:
         condition: service_healthy
@@ -78,9 +203,30 @@ services:
     profiles:
       - tools
 
+  # Redis Commander for Redis management (optional)
+  redis_commander:
+    image: rediscommander/redis-commander:latest
+    container_name: voiceai_redis_commander
+    environment:
+      REDIS_HOSTS: local:redis:6379
+    ports:
+      - "8081:8081"
+    depends_on:
+      - redis
+    networks:
+      - voiceai_network
+    profiles:
+      - tools
+
 volumes:
   postgres_data:
   redis_data:
+  ollama_data:
+  chroma_data:
+  whisper_models:
+  tts_models:
+  audio_cache:
+  celery_beat_data:
 
 networks:
   voiceai_network:

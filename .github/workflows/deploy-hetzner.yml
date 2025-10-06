@@ -1,0 +1,454 @@
+# GitHub Actions CI/CD Pipeline for Voice AI Agent - Hetzner VPS Deployment
+# Automated deployment pipeline optimized for Hetzner infrastructure
+
+name: Deploy to Hetzner VPS
+
+on:
+  push:
+    branches: [main, production]
+    tags: ['v*']
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy to'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - staging
+          - production
+
+env:
+  DOCKER_BUILDKIT: 1
+  COMPOSE_DOCKER_CLI_BUILD: 1
+
+jobs:
+  # Code Quality and Security Checks
+  quality-checks:
+    runs-on: ubuntu-latest
+    name: Code Quality & Security
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install flake8 mypy black pytest safety bandit
+          pip install -r backend/requirements.txt
+
+      - name: Code formatting check
+        run: black --check backend/app tests/
+
+      - name: Linting
+        run: |
+          flake8 backend/app --count --select=E9,F63,F7,F82 --show-source --statistics
+          flake8 backend/app --count --exit-zero --max-complexity=10 --max-line-length=88 --statistics
+
+      - name: Type checking
+        run: mypy backend/app --ignore-missing-imports
+
+      - name: Security audit
+        run: |
+          safety check --json
+          bandit -r backend/app -f json -o bandit-report.json || true
+
+      - name: Upload security reports
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: security-reports
+          path: |
+            bandit-report.json
+            safety-report.json
+
+  # Unit and Integration Tests
+  test:
+    runs-on: ubuntu-latest
+    name: Run Tests
+    needs: quality-checks
+    
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_DB: voiceai_test
+          POSTGRES_USER: voiceai
+          POSTGRES_PASSWORD: testpass
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+      redis:
+        image: redis:7-alpine
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libsndfile1-dev \
+            libasound2-dev \
+            portaudio19-dev \
+            ffmpeg
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r backend/requirements.txt
+          pip install pytest pytest-cov pytest-asyncio
+
+      - name: Run unit tests
+        env:
+          DATABASE_URL: postgresql+asyncpg://voiceai:testpass@localhost:5432/voiceai_test
+          REDIS_URL: redis://localhost:6379/0
+          TESTING: true
+        run: |
+          cd backend
+          pytest tests/ -v --cov=app --cov-report=xml --cov-report=html
+
+      - name: Upload test coverage
+        uses: codecov/codecov-action@v3
+        with:
+          file: backend/coverage.xml
+          fail_ci_if_error: true
+
+      - name: Upload coverage reports
+        uses: actions/upload-artifact@v3
+        with:
+          name: coverage-reports
+          path: backend/htmlcov/
+
+  # Build Docker Images
+  build:
+    runs-on: ubuntu-latest
+    name: Build Docker Images
+    needs: [quality-checks, test]
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    
+    outputs:
+      image-tag: ${{ steps.meta.outputs.tags }}
+      image-digest: ${{ steps.build.outputs.digest }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository }}/voiceai
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=sha,prefix={{branch}}-
+
+      - name: Build and push Docker image
+        id: build
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend
+          file: ./backend/Dockerfile.prod.hetzner
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          platforms: linux/amd64
+
+      - name: Generate SBOM
+        uses: anchore/sbom-action@v0
+        with:
+          image: ${{ steps.meta.outputs.tags }}
+          format: spdx-json
+          output-file: sbom.spdx.json
+
+      - name: Upload SBOM
+        uses: actions/upload-artifact@v3
+        with:
+          name: sbom
+          path: sbom.spdx.json
+
+  # Security Scanning
+  security-scan:
+    runs-on: ubuntu-latest
+    name: Security Scan
+    needs: build
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ needs.build.outputs.image-tag }}
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+
+      - name: Upload Trivy scan results
+        uses: github/codeql-action/upload-sarif@v2
+        with:
+          sarif_file: 'trivy-results.sarif'
+
+  # Deploy to Staging
+  deploy-staging:
+    runs-on: ubuntu-latest
+    name: Deploy to Staging
+    needs: [build, security-scan]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    environment: staging
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup SSH
+        uses: webfactory/ssh-agent@v0.8.0
+        with:
+          ssh-private-key: ${{ secrets.STAGING_SSH_KEY }}
+
+      - name: Deploy to staging server
+        env:
+          STAGING_HOST: ${{ secrets.STAGING_HOST }}
+          STAGING_USER: ${{ secrets.STAGING_USER }}
+          IMAGE_TAG: ${{ needs.build.outputs.image-tag }}
+        run: |
+          # Copy deployment files
+          scp -o StrictHostKeyChecking=no \
+            docker/docker-compose.prod.yml \
+            scripts/deploy/deploy.sh \
+            $STAGING_USER@$STAGING_HOST:/tmp/
+
+          # Execute deployment
+          ssh -o StrictHostKeyChecking=no $STAGING_USER@$STAGING_HOST << EOF
+            cd /opt/voiceai
+            
+            # Pull latest image
+            docker pull $IMAGE_TAG
+            
+            # Run deployment script
+            chmod +x /tmp/deploy.sh
+            /tmp/deploy.sh staging $IMAGE_TAG
+            
+            # Health check
+            sleep 30
+            curl -f http://localhost/api/v1/health || exit 1
+          EOF
+
+      - name: Run staging tests
+        env:
+          STAGING_HOST: ${{ secrets.STAGING_HOST }}
+          STAGING_USER: ${{ secrets.STAGING_USER }}
+        run: |
+          ssh -o StrictHostKeyChecking=no $STAGING_USER@$STAGING_HOST << EOF
+            cd /opt/voiceai
+            docker-compose -f docker-compose.prod.yml exec -T api pytest tests/integration/ -v
+          EOF
+
+  # Deploy to Production
+  deploy-production:
+    runs-on: ubuntu-latest
+    name: Deploy to Production
+    needs: [build, security-scan, deploy-staging]
+    if: github.ref == 'refs/heads/production' || startsWith(github.ref, 'refs/tags/v')
+    environment: production
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup SSH
+        uses: webfactory/ssh-agent@v0.8.0
+        with:
+          ssh-private-key: ${{ secrets.PRODUCTION_SSH_KEY }}
+
+      - name: Pre-deployment backup
+        env:
+          PROD_HOST: ${{ secrets.PRODUCTION_HOST }}
+          PROD_USER: ${{ secrets.PRODUCTION_USER }}
+        run: |
+          ssh -o StrictHostKeyChecking=no $PROD_USER@$PROD_HOST << EOF
+            cd /opt/voiceai
+            ./scripts/backup/backup.sh
+          EOF
+
+      - name: Deploy to production server
+        env:
+          PROD_HOST: ${{ secrets.PRODUCTION_HOST }}
+          PROD_USER: ${{ secrets.PRODUCTION_USER }}
+          IMAGE_TAG: ${{ needs.build.outputs.image-tag }}
+        run: |
+          # Copy deployment files
+          scp -o StrictHostKeyChecking=no \
+            docker/docker-compose.prod.yml \
+            scripts/deploy/deploy.sh \
+            $PROD_USER@$PROD_HOST:/tmp/
+
+          # Execute deployment
+          ssh -o StrictHostKeyChecking=no $PROD_USER@$PROD_HOST << EOF
+            cd /opt/voiceai
+            
+            # Pull latest image
+            docker pull $IMAGE_TAG
+            
+            # Run deployment script with production flag
+            chmod +x /tmp/deploy.sh
+            /tmp/deploy.sh production $IMAGE_TAG
+            
+            # Health check
+            sleep 60
+            curl -f https://your-domain.com/api/v1/health || exit 1
+          EOF
+
+      - name: Run production smoke tests
+        env:
+          PROD_HOST: ${{ secrets.PRODUCTION_HOST }}
+          PROD_USER: ${{ secrets.PRODUCTION_USER }}
+        run: |
+          ssh -o StrictHostKeyChecking=no $PROD_USER@$PROD_HOST << EOF
+            cd /opt/voiceai
+            ./scripts/deploy/smoke-tests.sh
+          EOF
+
+      - name: Notify deployment success
+        if: success()
+        uses: 8398a7/action-slack@v3
+        with:
+          status: success
+          text: 'Voice AI Agent successfully deployed to production! :rocket:'
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+      - name: Notify deployment failure
+        if: failure()
+        uses: 8398a7/action-slack@v3
+        with:
+          status: failure
+          text: 'Voice AI Agent production deployment failed! :exclamation:'
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+  # Performance Testing
+  performance-test:
+    runs-on: ubuntu-latest
+    name: Performance Testing
+    needs: deploy-staging
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install k6
+        run: |
+          sudo apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys C5AD17C747E3415A3642D57D77C6C491D6AC1D69
+          echo "deb https://dl.k6.io/deb stable main" | sudo tee /etc/apt/sources.list.d/k6.list
+          sudo apt-get update
+          sudo apt-get install k6
+
+      - name: Run performance tests
+        env:
+          STAGING_URL: ${{ secrets.STAGING_URL }}
+        run: |
+          k6 run --env BASE_URL=$STAGING_URL tests/performance/load-test.js
+
+      - name: Upload performance results
+        uses: actions/upload-artifact@v3
+        with:
+          name: performance-results
+          path: performance-results.json
+
+  # Cleanup
+  cleanup:
+    runs-on: ubuntu-latest
+    name: Cleanup
+    needs: [deploy-staging, deploy-production]
+    if: always()
+    
+    steps:
+      - name: Cleanup old images
+        run: |
+          # Keep last 5 images
+          docker image prune -f
+          
+  # Create Release
+  create-release:
+    runs-on: ubuntu-latest
+    name: Create Release
+    needs: [deploy-production]
+    if: startsWith(github.ref, 'refs/tags/v')
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Generate changelog
+        id: changelog
+        run: |
+          # Generate changelog from git commits
+          git log --pretty=format:"- %s" $(git describe --tags --abbrev=0 HEAD^)..HEAD > CHANGELOG.md
+
+      - name: Create Release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref_name }}
+          release_name: Voice AI Agent ${{ github.ref_name }}
+          body_path: CHANGELOG.md
+          draft: false
+          prerelease: false
+
+      - name: Upload deployment artifacts
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: docker/docker-compose.prod.yml
+          asset_name: docker-compose.prod.yml
+          asset_content_type: text/yaml

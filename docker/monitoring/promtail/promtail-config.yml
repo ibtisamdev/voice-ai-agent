@@ -1,0 +1,90 @@
+# Promtail Configuration for Voice AI Agent Log Collection
+server:
+  http_listen_port: 9080
+  grpc_listen_port: 0
+
+positions:
+  filename: /tmp/positions.yaml
+
+clients:
+  - url: http://loki:3100/loki/api/v1/push
+
+scrape_configs:
+  # System logs
+  - job_name: system
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: varlogs
+          __path__: /var/log/*.log
+
+  # Application logs
+  - job_name: voiceai-api
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: voiceai-api
+          service: api
+          __path__: /app/logs/api.log
+
+  # Voice processing logs
+  - job_name: voice-processing
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: voice-processing
+          service: voice
+          __path__: /app/logs/voice.log
+
+  # Conversation logs
+  - job_name: conversation
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: conversation
+          service: conversation
+          __path__: /app/logs/conversation.log
+
+  # Error logs
+  - job_name: errors
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: errors
+          service: all
+          __path__: /app/logs/error.log
+
+  # Campaign logs
+  - job_name: campaign
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: campaign
+          service: campaign
+          __path__: /app/logs/campaign.log
+
+  # CRM integration logs
+  - job_name: crm
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: crm
+          service: crm
+          __path__: /app/logs/crm.log
+
+  # Telephony logs
+  - job_name: telephony
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: telephony
+          service: telephony
+          __path__: /app/logs/telephony.log

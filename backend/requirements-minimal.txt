@@ -1,0 +1,38 @@
+# Minimal requirements for quick setup - core functionality only
+# Use this for initial setup, then install full requirements.txt later
+
+# Core Framework Dependencies
+fastapi==0.104.1
+uvicorn[standard]
+sqlalchemy==2.0.23
+psycopg2-binary
+redis[hiredis]
+pydantic==2.5.3
+pydantic-settings
+python-multipart
+python-jose[cryptography]
+passlib[bcrypt]
+alembic
+
+# HTTP and networking
+aiohttp
+requests
+requests-oauthlib
+
+# Basic utilities
+python-dateutil
+pytz
+PyYAML
+
+# WebSocket support
+websockets
+
+# Async Task Processing (minimal)
+celery[redis]
+
+# Telephony (minimal working packages only)
+twilio
+phonenumbers
+
+# Basic audio handling
+wave

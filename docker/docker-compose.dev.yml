@@ -7,11 +7,33 @@ services:
       DEBUG: "true"
       LOG_LEVEL: DEBUG
       ENVIRONMENT: development
+      # Voice service debug settings
+      VOICE_DEBUG_ENABLED: "true"
+      SAVE_AUDIO_DEBUG: "true" 
+      CONVERSATION_DEBUG: "true"
+      # Enable metrics for development
+      ENABLE_METRICS: "true"
+      # CORS settings for development
+      CORS_ORIGINS: "*"
     volumes:
-      - ../backend:/app
-      - ../ai:/app/ai
-      - ../tests:/app/tests
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload --log-level debug
+      - ../backend:/app:delegated
+      - ../ai:/app/ai:delegated
+      - ../tests:/app/tests:delegated
+      # Voice-specific volumes for development
+      - voice_models_dev:/app/models
+      - voice_cache_dev:/app/cache
+      - audio_debug:/app/debug/audio
+    command: >
+      sh -c "
+        echo 'Waiting for dependencies...' &&
+        while ! nc -z postgres 5432; do sleep 1; done &&
+        while ! nc -z redis 6379; do sleep 1; done &&
+        echo 'Starting development server with voice services...' &&
+        uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload --reload-dir /app --reload-include '*.py' --reload-include '*.yaml' --log-level debug
+      "
+    ports:
+      - "8000:8000"
+      - "5678:5678"   # Python debugger port
     
   # Development tools
   redis-commander:
@@ -19,6 +41,8 @@ services:
     container_name: voiceai_redis_commander
     environment:
       REDIS_HOSTS: local:redis:6379
+      HTTP_USER: admin
+      HTTP_PASSWORD: admin
     ports:
       - "8081:8081"
     depends_on:
@@ -27,3 +51,12 @@ services:
       - voiceai_network
     profiles:
       - tools
+
+  # Additional development volumes
+volumes:
+  voice_models_dev:
+    driver: local
+  voice_cache_dev:
+    driver: local
+  audio_debug:
+    driver: local

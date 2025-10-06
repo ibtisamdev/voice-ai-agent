@@ -1,11 +1,78 @@
+# Core Framework Dependencies (pinned for stability)
 fastapi==0.104.1
-uvicorn[standard]==0.24.0
+uvicorn[standard]
 sqlalchemy==2.0.23
-psycopg2-binary==2.9.9
-redis==5.0.1
+psycopg2-binary
+redis[hiredis]
 pydantic==2.5.3
-pydantic-settings==2.1.0
-python-multipart==0.0.6
-python-jose[cryptography]==3.3.0
-passlib[bcrypt]==1.7.4
-alembic==1.13.1
+pydantic-settings
+python-multipart
+python-jose[cryptography]
+passlib[bcrypt]
+alembic
+
+# HTTP and networking
+aiohttp
+requests
+requests-oauthlib
+
+# AI/LLM Dependencies (pinned for reproducibility)
+ollama
+langchain==0.1.0
+langchain-community
+chromadb
+sentence-transformers
+pypdf
+python-docx
+tiktoken
+numpy
+psutil
+torch==2.1.0
+transformers==4.35.0
+
+# Voice Processing Dependencies (pinned for model compatibility)
+openai-whisper==20231117
+faster-whisper
+webrtcvad
+noisereduce
+scipy
+librosa
+soundfile
+pydub
+
+# Text-to-Speech Dependencies
+# TTS==0.22.0  # Temporarily disabled due to sudachipy build issues on ARM64
+pyttsx3
+azure-cognitiveservices-speech
+
+# WebSocket support
+websockets
+
+# YAML support for flows
+PyYAML
+
+# Phase 3: Integration Layer Dependencies
+# CRM Integration
+# zoho-crm-python-sdk  # Package doesn't exist on PyPI - use zcrmsdk instead when needed
+
+# Telephony & SIP
+# pjsua2  # Requires manual compilation from PJSIP source
+twilio
+# asterisk-ami  # Optional - comment out for now
+phonenumbers
+
+# Async Task Processing
+celery[redis]
+
+# Scheduling & Background Tasks
+apscheduler
+
+# Additional utilities
+python-dateutil
+pytz
+
+# Speaker diarization (optional) - commented out due to MySQL-python dependency conflict
+# pyannote.audio
+
+# Audio format handling
+# wave - using built-in Python wave module instead

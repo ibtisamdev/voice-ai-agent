@@ -1,0 +1,131 @@
+# Voice AI Agent Alert Rules - Hetzner VPS Optimized
+groups:
+  - name: voice-ai-system
+    rules:
+      # High CPU usage
+      - alert: HighCPUUsage
+        expr: 100 - (avg by(instance) (rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 80
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High CPU usage detected on {{ $labels.instance }}"
+          description: "CPU usage is {{ $value }}% on {{ $labels.instance }}"
+
+      # High memory usage
+      - alert: HighMemoryUsage
+        expr: (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100 > 85
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High memory usage on {{ $labels.instance }}"
+          description: "Memory usage is {{ $value }}% on {{ $labels.instance }}"
+
+      # High disk usage
+      - alert: HighDiskUsage
+        expr: (1 - (node_filesystem_free_bytes / node_filesystem_size_bytes)) * 100 > 85
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High disk usage on {{ $labels.instance }}"
+          description: "Disk usage is {{ $value }}% on {{ $labels.instance }}"
+
+  - name: voice-ai-application
+    rules:
+      # API service down
+      - alert: APIServiceDown
+        expr: up{job="voiceai-api"} == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Voice AI API service is down"
+          description: "The Voice AI API service has been down for more than 2 minutes"
+
+      # High API response time
+      - alert: HighAPIResponseTime
+        expr: histogram_quantile(0.95, rate(http_request_duration_seconds_bucket{job="voiceai-api"}[5m])) > 2
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High API response time"
+          description: "95th percentile response time is {{ $value }}s"
+
+      # High error rate
+      - alert: HighAPIErrorRate
+        expr: rate(http_requests_total{job="voiceai-api",status=~"5.."}[5m]) / rate(http_requests_total{job="voiceai-api"}[5m]) > 0.05
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High API error rate"
+          description: "Error rate is {{ $value | humanizePercentage }}"
+
+  - name: voice-ai-database
+    rules:
+      # PostgreSQL down
+      - alert: PostgreSQLDown
+        expr: up{job="postgres"} == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "PostgreSQL database is down"
+          description: "PostgreSQL has been down for more than 2 minutes"
+
+      # Redis down
+      - alert: RedisDown
+        expr: up{job="redis"} == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Redis is down"
+          description: "Redis has been down for more than 2 minutes"
+
+  - name: voice-ai-voice-processing
+    rules:
+      # High voice processing latency
+      - alert: HighVoiceProcessingLatency
+        expr: histogram_quantile(0.95, rate(voice_processing_duration_seconds_bucket[5m])) > 5
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High voice processing latency"
+          description: "95th percentile voice processing time is {{ $value }}s"
+
+      # Voice processing queue backlog
+      - alert: VoiceProcessingQueueBacklog
+        expr: voice_processing_queue_size > 100
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Voice processing queue backlog"
+          description: "Voice processing queue has {{ $value }} items"
+
+  - name: voice-ai-telephony
+    rules:
+      # High call failure rate
+      - alert: HighCallFailureRate
+        expr: rate(telephony_calls_failed_total[5m]) / rate(telephony_calls_total[5m]) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High call failure rate"
+          description: "Call failure rate is {{ $value | humanizePercentage }}"
+
+      # SIP gateway disconnected
+      - alert: SIPGatewayDisconnected
+        expr: sip_gateway_connected == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "SIP gateway disconnected"
+          description: "SIP gateway has been disconnected for more than 2 minutes"

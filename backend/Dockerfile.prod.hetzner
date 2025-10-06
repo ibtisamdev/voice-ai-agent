@@ -1,0 +1,149 @@
+# Production Dockerfile for Voice AI Agent - Hetzner VPS Optimized
+# Multi-stage build optimized for smaller size and efficient resource usage
+
+FROM python:3.11-slim as builder
+
+# Set environment variables for build
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+ENV PIP_NO_CACHE_DIR=1
+ENV PIP_DISABLE_PIP_VERSION_CHECK=1
+
+WORKDIR /app
+
+# Install build dependencies (minimal set for Hetzner VPS)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    libpq-dev \
+    libsndfile1-dev \
+    libasound2-dev \
+    portaudio19-dev \
+    libavcodec-dev \
+    libavformat-dev \
+    libavutil-dev \
+    libgomp1 \
+    libopenblas-dev \
+    curl \
+    git \
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get clean
+
+# Copy requirements first for better layer caching
+COPY requirements.txt .
+
+# Create virtual environment
+RUN python -m venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+
+# Install Python dependencies with optimizations for Hetzner VPS
+RUN pip install --upgrade pip setuptools wheel && \
+    # Install PyTorch CPU-only version to save space
+    pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu && \
+    # Install core dependencies
+    pip install -r requirements.txt && \
+    # Install voice processing libraries
+    pip install \
+        openai-whisper \
+        faster-whisper \
+        TTS \
+        librosa \
+        soundfile \
+        pyaudio \
+        webrtcvad \
+        scipy \
+        transformers \
+        sentence-transformers \
+        && \
+    # Clean up pip cache to reduce image size
+    pip cache purge
+
+# Production stage - minimal runtime image
+FROM python:3.11-slim
+
+# Set production environment variables
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+ENV PATH="/opt/venv/bin:$PATH"
+ENV ENVIRONMENT=production
+ENV HETZNER_OPTIMIZED=true
+
+# Install only runtime dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    postgresql-client \
+    ffmpeg \
+    libsndfile1 \
+    libportaudio2 \
+    libavcodec-extra \
+    libgomp1 \
+    libopenblas0 \
+    curl \
+    netcat-openbsd \
+    procps \
+    htop \
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get clean
+
+WORKDIR /app
+
+# Copy virtual environment from builder
+COPY --from=builder /opt/venv /opt/venv
+
+# Create optimized directory structure for Hetzner VPS
+RUN mkdir -p \
+    /app/models/whisper \
+    /app/models/tts \
+    /app/models/transformers \
+    /app/cache/audio \
+    /app/cache/conversation \
+    /app/cache/embeddings \
+    /app/logs \
+    /app/data/backups \
+    /app/data/uploads \
+    && chmod 755 /app/cache /app/logs /app/data
+
+# Copy application code
+COPY . .
+
+# Create non-root user for security
+RUN groupadd -r voiceai && useradd -r -g voiceai -d /app -s /bin/bash voiceai \
+    && chown -R voiceai:voiceai /app
+
+# Switch to non-root user
+USER voiceai
+
+# Set production environment variables for voice processing
+ENV WHISPER_CACHE_DIR=/app/models/whisper
+ENV TRANSFORMERS_CACHE=/app/models/transformers
+ENV HF_HOME=/app/models/transformers
+ENV VOICE_MODEL_PATH=/app/models
+ENV VOICE_CACHE_PATH=/app/cache
+ENV TORCH_HOME=/app/models/torch
+
+# Hetzner VPS optimizations
+ENV OMP_NUM_THREADS=4
+ENV MKL_NUM_THREADS=4
+ENV NUMEXPR_MAX_THREADS=4
+ENV TOKENIZERS_PARALLELISM=false
+
+# Model download optimization for Hetzner bandwidth
+ENV HF_HUB_CACHE=/app/models/transformers
+ENV HUGGINGFACE_HUB_CACHE=/app/models/transformers
+
+# Expose port
+EXPOSE 8000
+
+# Health check optimized for production
+HEALTHCHECK --interval=60s --timeout=15s --start-period=120s --retries=3 \
+    CMD curl -f http://localhost:8000/api/v1/health || exit 1
+
+# Production entrypoint with resource optimization
+CMD ["uvicorn", "app.main:app", \
+     "--host", "0.0.0.0", \
+     "--port", "8000", \
+     "--workers", "4", \
+     "--worker-class", "uvicorn.workers.UvicornWorker", \
+     "--max-requests", "1000", \
+     "--max-requests-jitter", "100", \
+     "--timeout-keep-alive", "5", \
+     "--access-log", \
+     "--log-level", "info"]

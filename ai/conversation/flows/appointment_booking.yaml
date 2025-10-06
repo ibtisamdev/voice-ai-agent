@@ -1,0 +1,216 @@
+id: appointment_booking
+name: Appointment Booking Flow
+description: Flow for scheduling legal consultations and appointments
+
+start_node: start
+
+global_variables:
+  firm_name: "AI Legal Associates"
+  business_hours: "9 AM to 6 PM EST, Monday through Friday"
+  consultation_types:
+    - "Initial Consultation"
+    - "Follow-up Meeting"
+    - "Document Review"
+    - "Contract Consultation"
+
+nodes:
+  start:
+    type: message
+    name: "Appointment Booking Start"
+    message: "I'd be happy to help you schedule an appointment with one of our attorneys. Let me gather some information to find the best time and attorney for your needs."
+    next_node: get_name
+
+  get_name:
+    type: slot_fill
+    name: "Client Name"
+    slot:
+      name: client_name
+      type: text
+      prompt: "Could you please provide your full name?"
+      required: true
+      retry_prompt: "I didn't catch your name. Could you please tell me your full name for the appointment?"
+      max_retries: 2
+    next_node: get_phone
+
+  get_phone:
+    type: slot_fill
+    name: "Phone Number"
+    slot:
+      name: phone_number
+      type: phone
+      prompt: "What's the best phone number to reach you at?"
+      required: true
+      retry_prompt: "I need a valid phone number to confirm your appointment. Could you please provide your phone number?"
+      max_retries: 3
+    next_node: get_email
+
+  get_email:
+    type: slot_fill
+    name: "Email Address"
+    slot:
+      name: email
+      type: email
+      prompt: "And what's your email address? This is optional but helpful for sending appointment confirmations."
+      required: false
+      retry_prompt: "That doesn't seem like a valid email address. Could you try again, or say 'skip' if you prefer not to provide it?"
+      max_retries: 2
+      default_value: "not_provided"
+    next_node: get_consultation_type
+
+  get_consultation_type:
+    type: slot_fill
+    name: "Consultation Type"
+    slot:
+      name: consultation_type
+      type: choice
+      prompt: "What type of appointment would you like to schedule? We offer Initial Consultation, Follow-up Meeting, Document Review, or Contract Consultation."
+      choices:
+        - "Initial Consultation"
+        - "Follow-up Meeting"
+        - "Document Review"
+        - "Contract Consultation"
+      required: true
+      retry_prompt: "Please choose from: Initial Consultation, Follow-up Meeting, Document Review, or Contract Consultation."
+      max_retries: 2
+      default_value: "Initial Consultation"
+    next_node: get_preferred_time
+
+  get_preferred_time:
+    type: slot_fill
+    name: "Preferred Time"
+    slot:
+      name: preferred_time
+      type: choice
+      prompt: "When would you prefer to meet? We have availability in the morning (9 AM - 12 PM), afternoon (12 PM - 4 PM), or late afternoon (4 PM - 6 PM)."
+      choices:
+        - "morning"
+        - "afternoon" 
+        - "late afternoon"
+        - "any time"
+      required: true
+      retry_prompt: "Please let me know if you prefer morning, afternoon, late afternoon, or any time that works."
+      max_retries: 2
+      default_value: "any time"
+    next_node: get_preferred_days
+
+  get_preferred_days:
+    type: slot_fill
+    name: "Preferred Days"
+    slot:
+      name: preferred_days
+      type: choice
+      prompt: "Do you have any preferred days of the week? You can say specific days like Monday or Tuesday, or 'weekdays only', or 'any day'."
+      choices:
+        - "Monday"
+        - "Tuesday"
+        - "Wednesday"
+        - "Thursday"
+        - "Friday"
+        - "weekdays only"
+        - "any day"
+      required: false
+      max_retries: 2
+      default_value: "any day"
+    next_node: check_urgency
+
+  check_urgency:
+    type: question
+    name: "Appointment Urgency"
+    message: "How soon do you need this appointment? Is this urgent, or are you flexible with timing?"
+    branches:
+      urgent: urgent_scheduling
+      asap: urgent_scheduling
+      emergency: urgent_scheduling
+      flexible: normal_scheduling
+      soon: normal_scheduling
+      "this week": urgent_scheduling
+      "next week": normal_scheduling
+    next_node: normal_scheduling
+
+  urgent_scheduling:
+    type: message
+    name: "Urgent Appointment"
+    message: "I understand you need to meet soon. Let me check our immediate availability for a {consultation_type} appointment."
+    next_node: check_availability
+
+  normal_scheduling:
+    type: message
+    name: "Standard Scheduling"
+    message: "Thank you for the flexibility. I'll look for the best available appointment time for your {consultation_type}."
+    next_node: check_availability
+
+  check_availability:
+    type: llm_response
+    name: "Availability Check"
+    llm_prompt: "Generate a response about checking availability for {client_name} for a {consultation_type} appointment. Preferred time: {preferred_time}, preferred days: {preferred_days}. Simulate checking the calendar and suggest 2-3 specific appointment slots in the next week. Be professional and helpful."
+    llm_system_prompt: "You are an appointment scheduler for a law firm. Provide realistic appointment options and be professional in your scheduling communication."
+    use_context: true
+    next_node: confirm_appointment
+
+  confirm_appointment:
+    type: message
+    name: "Appointment Confirmation"
+    message: "Perfect! I have your information: {client_name}, phone: {phone_number}, email: {email}, for a {consultation_type} appointment. Our scheduling team will contact you within 2 business hours to confirm your specific appointment time based on your {preferred_time} preference. You'll receive a confirmation call and email with all the details."
+    next_node: provide_preparation_info
+
+  provide_preparation_info:
+    type: llm_response
+    name: "Appointment Preparation"
+    llm_prompt: "Provide helpful preparation information for a {consultation_type} appointment. Include what documents to bring, what to expect, and any other relevant preparation advice for a legal consultation."
+    llm_system_prompt: "You are a legal assistant providing appointment preparation guidance. Be thorough and helpful about what clients should expect and how to prepare."
+    use_context: true
+    next_node: final_confirmation
+
+  final_confirmation:
+    type: message
+    name: "Final Details"
+    message: "Our office is located at [OFFICE ADDRESS], and we offer both in-person and virtual consultations. During {business_hours}, you can always call us if you need to reschedule or have any questions before your appointment."
+    next_node: ask_additional_questions
+
+  ask_additional_questions:
+    type: question
+    name: "Additional Questions"
+    message: "Do you have any other questions about your upcoming appointment or our services?"
+    branches:
+      yes: answer_questions
+      sure: answer_questions
+      question: answer_questions
+      no: end_booking
+      thanks: end_booking
+      good: end_booking
+    next_node: end_booking
+
+  answer_questions:
+    type: slot_fill
+    name: "Additional Questions"
+    slot:
+      name: additional_questions
+      type: text
+      prompt: "What questions do you have about your appointment or our services?"
+      required: true
+    next_node: provide_answers
+
+  provide_answers:
+    type: llm_response
+    name: "Answer Client Questions"
+    llm_prompt: "Answer the client's question: '{additional_questions}' about their upcoming {consultation_type} appointment or law firm services. Be helpful and professional."
+    llm_system_prompt: "You are a knowledgeable legal assistant. Answer questions about appointments, services, and general law firm operations professionally and helpfully."
+    use_context: true
+    next_node: end_booking
+
+  end_booking:
+    type: end
+    name: "Booking Complete"
+    message: "Thank you, {client_name}! Your {consultation_type} appointment request has been submitted. Our scheduling team will contact you at {phone_number} within 2 business hours to confirm the details. We look forward to meeting with you!"
+
+metadata:
+  version: "1.0"
+  created: "2024-01-15"
+  author: "Voice AI Agent System"
+  category: "appointment_booking"
+  estimated_duration: "3-7 minutes"
+  priority: "medium"
+  integration_required:
+    - "calendar_system"
+    - "crm_system"
+    - "notification_system"

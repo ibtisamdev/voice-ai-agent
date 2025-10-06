@@ -1,0 +1,68 @@
+name: "Legal Consultation Default Flow"
+version: "1.0"
+description: "Basic flow for legal consultation intake"
+
+nodes:
+  - id: "greeting"
+    type: "response"
+    content: "Hello! I'm your AI legal assistant. How can I help you today?"
+    next: "intent_classification"
+    
+  - id: "intent_classification"
+    type: "intent"
+    intents:
+      - "legal_consultation"
+      - "appointment_booking"
+      - "general_inquiry"
+    default: "general_inquiry"
+    
+  - id: "legal_consultation"
+    type: "response"
+    content: "I understand you need legal consultation. Can you briefly describe your legal matter?"
+    next: "collect_details"
+    
+  - id: "appointment_booking"
+    type: "response"
+    content: "I'd be happy to help you schedule an appointment. What type of legal service do you need?"
+    next: "collect_appointment_details"
+    
+  - id: "general_inquiry"
+    type: "response"
+    content: "I'm here to help with legal matters. Could you please be more specific about what you need assistance with?"
+    next: "intent_classification"
+    
+  - id: "collect_details"
+    type: "slot_filling"
+    slots:
+      - name: "case_type"
+        prompt: "What type of legal case is this?"
+        required: true
+      - name: "urgency"
+        prompt: "How urgent is this matter?"
+        required: false
+    next: "summary"
+    
+  - id: "collect_appointment_details"
+    type: "slot_filling"
+    slots:
+      - name: "preferred_date"
+        prompt: "What date would work best for you?"
+        required: true
+      - name: "preferred_time"
+        prompt: "What time of day would you prefer?"
+        required: true
+    next: "appointment_confirmation"
+    
+  - id: "summary"
+    type: "response"
+    content: "Thank you for the information. I'll connect you with the appropriate legal specialist. Is there anything else I can help you with?"
+    next: "end"
+    
+  - id: "appointment_confirmation"
+    type: "response"
+    content: "Perfect! I'll schedule your appointment and send you a confirmation. Is there anything else I can help you with today?"
+    next: "end"
+    
+  - id: "end"
+    type: "end"
+    content: "Thank you for contacting us. Have a great day!"

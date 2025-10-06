@@ -76,6 +76,16 @@ data/
 *.csv
 *.json.backup
 
+# Voice processing cache and models
+*.wav
+*.mp3
+*.flac
+*.m4a
+cache/
+models/whisper/
+models/tts/
+debug/audio/
+
 # Jupyter Notebook
 .ipynb_checkpoints
 
@@ -112,5 +122,5 @@ dmypy.json
 .pyre/
 
 # docs
-claude-docs/
-docs/
+# claude-docs/
+# docs/

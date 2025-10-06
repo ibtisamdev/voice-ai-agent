@@ -1,0 +1,186 @@
+id: legal_consultation
+name: Legal Consultation Flow
+description: Primary flow for handling legal consultations and inquiries
+
+start_node: greeting
+
+global_variables:
+  firm_name: "AI Legal Associates"
+  business_hours: "9 AM to 6 PM EST"
+  emergency_number: "1-800-LEGAL-HELP"
+
+nodes:
+  greeting:
+    type: message
+    name: "Welcome Greeting"
+    message: "Hello! I'm your AI legal assistant from {firm_name}. I'm here to help you with your legal questions and connect you with the right resources. How can I assist you today?"
+    next_node: get_issue_type
+
+  get_issue_type:
+    type: slot_fill
+    name: "Identify Legal Issue Type"
+    slot:
+      name: issue_type
+      type: choice
+      prompt: "What type of legal matter do you need help with? I can assist with Contract Review, Personal Injury, Family Law, Business Law, Real Estate, or Other legal matters."
+      choices:
+        - "Contract Review"
+        - "Personal Injury" 
+        - "Family Law"
+        - "Business Law"
+        - "Real Estate"
+        - "Other"
+      required: true
+      retry_prompt: "I didn't catch that. Could you please choose from: Contract Review, Personal Injury, Family Law, Business Law, Real Estate, or Other?"
+      max_retries: 2
+    next_node: get_details
+
+  get_details:
+    type: slot_fill
+    name: "Gather Case Details"
+    slot:
+      name: issue_details
+      type: text
+      prompt: "Thank you. Can you provide more details about your {issue_type} matter? Please be as specific as possible so I can better assist you."
+      required: true
+      retry_prompt: "Could you please provide some details about your legal issue? Even a brief description would help me understand how to assist you."
+      max_retries: 2
+    next_node: analyze_urgency
+
+  analyze_urgency:
+    type: llm_response
+    name: "AI Analysis of Legal Matter"
+    llm_prompt: "Based on the legal issue type '{issue_type}' and details '{issue_details}', analyze this matter and provide initial guidance. Assess if this appears to be urgent and explain why. Be helpful but remind the caller that this is not legal advice."
+    llm_system_prompt: "You are a knowledgeable legal assistant AI. Provide helpful analysis while clearly stating you cannot provide legal advice and that consultation with a licensed attorney is recommended for specific legal matters."
+    use_context: true
+    next_node: check_urgency
+
+  check_urgency:
+    type: question
+    name: "Urgency Assessment"
+    message: "Based on what you've described, this seems like an important matter that would benefit from attorney consultation. Would you say this is urgent and needs immediate attention, or can we schedule a consultation at your convenience?"
+    branches:
+      urgent: urgent_path
+      immediate: urgent_path
+      emergency: urgent_path
+      asap: urgent_path
+      yes: urgent_path
+      convenient: normal_path
+      schedule: normal_path
+      no: normal_path
+      later: normal_path
+    next_node: normal_path  # default if no branch matches
+
+  urgent_path:
+    type: message
+    name: "Urgent Matter Response"
+    message: "I understand this is urgent. Let me connect you with an attorney right away. Please hold while I transfer your call to our emergency legal line."
+    next_node: transfer_to_attorney
+
+  normal_path:
+    type: question
+    name: "Service Options"
+    message: "I can help you in a couple of ways: I can provide some initial guidance about your {issue_type} matter, or I can help you schedule a consultation with one of our experienced attorneys. Which would you prefer?"
+    branches:
+      guidance: provide_guidance
+      information: provide_guidance
+      advice: provide_guidance
+      schedule: schedule_consultation
+      appointment: schedule_consultation
+      consultation: schedule_consultation
+      attorney: schedule_consultation
+      lawyer: schedule_consultation
+    next_node: consultation_or_guidance
+
+  consultation_or_guidance:
+    type: question
+    name: "Clarify Preference"
+    message: "Would you like me to: 1) Provide some initial guidance about your matter, or 2) Help you schedule a consultation with an attorney?"
+    branches:
+      "1": provide_guidance
+      guidance: provide_guidance
+      information: provide_guidance
+      "2": schedule_consultation
+      schedule: schedule_consultation
+      consultation: schedule_consultation
+    next_node: provide_guidance  # default
+
+  provide_guidance:
+    type: llm_response
+    name: "Legal Guidance Response"
+    llm_prompt: "Provide helpful legal guidance for a {issue_type} matter with these details: '{issue_details}'. Include relevant general information, typical next steps, important considerations, and emphasize when they should consult with an attorney. Be thorough but clear that this is not legal advice."
+    llm_system_prompt: "You are a helpful legal information assistant. Provide detailed, accurate general legal information while making it very clear you're not providing legal advice and that they should consult with a licensed attorney for specific legal advice tailored to their situation."
+    use_context: true
+    next_node: offer_consultation
+
+  offer_consultation:
+    type: question
+    name: "Follow-up Consultation Offer"
+    message: "I hope that information was helpful for understanding your {issue_type} matter. Would you like to schedule a consultation with one of our attorneys to discuss your specific situation in detail?"
+    branches:
+      yes: schedule_consultation
+      sure: schedule_consultation
+      ok: schedule_consultation
+      schedule: schedule_consultation
+      no: additional_help
+      thanks: additional_help
+    next_node: additional_help
+
+  schedule_consultation:
+    type: action
+    name: "Transfer to Scheduling"
+    action: transfer_to_flow
+    action_params:
+      flow_id: appointment_booking
+    message: "Perfect! Let me help you schedule a consultation. I'll gather some information to set up your appointment with the right attorney for your {issue_type} matter."
+
+  transfer_to_attorney:
+    type: transfer
+    name: "Emergency Transfer"
+    transfer_to: attorney_emergency_queue
+    transfer_reason: urgent_legal_matter
+    message: "Transferring you to our emergency legal line now. Please stay on the line."
+
+  additional_help:
+    type: question
+    name: "Additional Assistance"
+    message: "Is there anything else I can help you with regarding your legal matter or our services?"
+    branches:
+      yes: get_additional_request
+      more: get_additional_request
+      question: get_additional_request
+      no: end_helpful
+      thanks: end_helpful
+      goodbye: end_helpful
+    next_node: end_helpful
+
+  get_additional_request:
+    type: slot_fill
+    name: "Additional Request"
+    slot:
+      name: additional_request
+      type: text
+      prompt: "What else can I help you with?"
+      required: true
+    next_node: handle_additional_request
+
+  handle_additional_request:
+    type: llm_response
+    name: "Handle Additional Request"
+    llm_prompt: "The caller has an additional request: '{additional_request}' related to their {issue_type} matter. Provide a helpful response or direct them to appropriate resources."
+    llm_system_prompt: "You are a legal assistant AI. Respond helpfully to the additional request while maintaining professional boundaries about not providing legal advice."
+    use_context: true
+    next_node: end_helpful
+
+  end_helpful:
+    type: end
+    name: "Conversation Conclusion"
+    message: "Thank you for calling {firm_name}. If you need any assistance in the future, please don't hesitate to contact us during our business hours, {business_hours}. Have a great day!"
+
+metadata:
+  version: "1.0"
+  created: "2024-01-15"
+  author: "Voice AI Agent System"
+  category: "legal_consultation"
+  estimated_duration: "5-10 minutes"
+  priority: "high"
