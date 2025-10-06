@@ -134,8 +134,12 @@ class CoquiTTSEngine:
             return False
         
         try:
-            # Load default English model
-            model_name = "tts_models/en/ljspeech/tacotron2-DDC"
+            # Set environment variable to accept Coqui license non-interactively
+            import os
+            os.environ["COQUI_TOS_AGREED"] = "1"
+            
+            # Use simplest working Coqui model
+            model_name = "tts_models/en/ljspeech/speedy-speech"
             self.model = TTS(model_name=model_name).to(self.device)
             self.models["en"] = self.model
             
@@ -175,11 +179,10 @@ class CoquiTTSEngine:
             with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as temp_file:
                 temp_path = temp_file.name
             
-            # Synthesize speech
+            # Synthesize speech with Tacotron2 (no speaker conditioning needed)
             self.model.tts_to_file(
                 text=request.text,
-                file_path=temp_path,
-                speed=request.speed
+                file_path=temp_path
             )
             
             # Read audio data

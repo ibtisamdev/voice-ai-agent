@@ -25,6 +25,10 @@ RUN apt-get update \
         curl \
     && rm -rf /var/lib/apt/lists/*
 
+# Install uv for faster Python package installation
+RUN curl -LsSf https://astral.sh/uv/install.sh | sh
+ENV PATH="/root/.local/bin:$PATH"
+
 # Copy requirements
 COPY requirements.txt .
 
@@ -32,11 +36,10 @@ COPY requirements.txt .
 RUN python -m venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
-# Install Python dependencies
-RUN pip install --upgrade pip \
-    && pip install --no-cache-dir torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu \
-    && pip install --no-cache-dir -r requirements.txt \
-    && pip install --no-cache-dir \
+# Install Python dependencies with uv (venv is activated via PATH)
+RUN uv pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu \
+    && uv pip install -r requirements.txt \
+    && uv pip install \
         openai-whisper \
         faster-whisper \
         TTS \

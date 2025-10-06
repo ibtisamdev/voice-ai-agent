@@ -41,7 +41,7 @@ soundfile
 pydub
 
 # Text-to-Speech Dependencies
-# TTS==0.22.0  # Temporarily disabled due to sudachipy build issues on ARM64
+TTS==0.22.0  # Re-enabled for XTTS v2 support
 pyttsx3
 azure-cognitiveservices-speech
 

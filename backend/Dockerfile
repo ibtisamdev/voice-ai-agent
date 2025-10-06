@@ -36,20 +36,27 @@ RUN apt-get update \
         netcat-openbsd \
     && rm -rf /var/lib/apt/lists/*
 
+# Install Rust toolchain for building packages like sudachipy
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y \
+    && . ~/.cargo/env
+
+# Install uv for faster Python package installation
+RUN curl -LsSf https://astral.sh/uv/install.sh | sh
+ENV PATH="/root/.local/bin:/root/.cargo/bin:$PATH"
+
 # Install Python dependencies
 COPY requirements.txt .
 COPY requirements-dev.txt .
 
 # Install PyTorch first (for better dependency resolution)
-RUN pip install --no-cache-dir --upgrade pip \
-    && pip install --no-cache-dir torch torchvision --index-url https://download.pytorch.org/whl/cpu
+RUN uv pip install --system torch torchvision --index-url https://download.pytorch.org/whl/cpu
 
 # Install main dependencies
-RUN pip install --no-cache-dir -r requirements.txt \
-    && pip install --no-cache-dir -r requirements-dev.txt
+RUN uv pip install --system -r requirements.txt \
+    && uv pip install --system -r requirements-dev.txt
 
 # Install additional voice processing packages
-RUN pip install --no-cache-dir \
+RUN uv pip install --system \
     openai-whisper \
     faster-whisper \
     librosa \
