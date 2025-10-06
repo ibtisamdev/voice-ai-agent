@@ -81,12 +81,29 @@ class Settings(BaseSettings):
     NOISE_REDUCTION_ENABLED: bool = True
     
     # TTS Configuration
-    TTS_DEFAULT_ENGINE: str = "coqui"  # coqui, elevenlabs, azure, system
+    TTS_DEFAULT_ENGINE: str = "auto"  # auto, coqui, elevenlabs, azure, pyttsx3, system
+    TTS_ENGINE_PRIORITY: str = "coqui,elevenlabs,azure,pyttsx3,system"
+    TTS_COQUI_MODEL: str = "tts_models/en/ljspeech/fast_pitch"
     TTS_DEFAULT_VOICE: Optional[str] = None
+    
+    # Performance settings
     TTS_CACHE_ENABLED: bool = True
     TTS_CACHE_SIZE: int = 100
+    TTS_CACHE_TTL: int = 3600
+    
+    # Audio quality settings
     TTS_RATE: float = 1.0
     TTS_VOLUME: float = 1.0
+    TTS_PITCH: float = 1.0
+    
+    # Fallback behavior
+    TTS_ENABLE_FALLBACK: bool = True
+    TTS_FALLBACK_TIMEOUT: int = 10
+    TTS_RETRY_ATTEMPTS: int = 2
+    
+    # Debug settings
+    TTS_DEBUG_ENABLED: bool = False
+    TTS_SAVE_DEBUG_AUDIO: bool = False
     
     # External API Keys (optional)
     ELEVENLABS_API_KEY: Optional[str] = None
