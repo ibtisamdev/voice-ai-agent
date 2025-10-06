@@ -23,8 +23,8 @@ except ImportError:
     HAS_PJSUA = False
     logging.warning("PJSUA2 not available. SIP functionality will be limited.")
 
-from ..backend.app.core.config import settings
-from ..backend.app.models.telephony import CallRecord, CallEvent, SIPAccount
+from app.core.config import settings
+from app.models.telephony import CallRecord, CallEvent, SIPAccount
 
 logger = logging.getLogger(__name__)
 

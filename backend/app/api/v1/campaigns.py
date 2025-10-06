@@ -33,15 +33,15 @@ router = APIRouter(prefix="/campaigns", tags=["Campaign Management"])
 class CampaignCreateRequest(BaseModel):
     name: str = Field(..., min_length=1, max_length=255)
     description: Optional[str] = None
-    campaign_type: str = Field(..., regex="^(outbound_sales|follow_up|survey|appointment_reminder)$")
-    dialer_mode: str = Field(default="progressive", regex="^(progressive|predictive|preview|manual)$")
+    campaign_type: str = Field(..., pattern="^(outbound_sales|follow_up|survey|appointment_reminder)$")
+    dialer_mode: str = Field(default="progressive", pattern="^(progressive|predictive|preview|manual)$")
     max_concurrent_calls: int = Field(default=10, ge=1, le=100)
     call_timeout: int = Field(default=30, ge=10, le=120)
     retry_attempts: int = Field(default=3, ge=1, le=10)
     retry_delay: int = Field(default=3600, ge=300, le=86400)
     timezone: str = Field(default="America/New_York")
-    calling_hours_start: str = Field(default="09:00", regex="^([01]?[0-9]|2[0-3]):[0-5][0-9]$")
-    calling_hours_end: str = Field(default="18:00", regex="^([01]?[0-9]|2[0-3]):[0-5][0-9]$")
+    calling_hours_start: str = Field(default="09:00", pattern="^([01]?[0-9]|2[0-3]):[0-5][0-9]$")
+    calling_hours_end: str = Field(default="18:00", pattern="^([01]?[0-9]|2[0-3]):[0-5][0-9]$")
     calling_days: str = Field(default="1,2,3,4,5")
     respect_dnc: bool = Field(default=True)
     practice_area: Optional[str] = Field(None, max_length=100)
@@ -51,9 +51,9 @@ class CampaignCreateRequest(BaseModel):
 class CampaignUpdateRequest(BaseModel):
     name: Optional[str] = Field(None, min_length=1, max_length=255)
     description: Optional[str] = None
-    dialer_mode: Optional[str] = Field(None, regex="^(progressive|predictive|preview|manual)$")
+    dialer_mode: Optional[str] = Field(None, pattern="^(progressive|predictive|preview|manual)$")
     max_concurrent_calls: Optional[int] = Field(None, ge=1, le=100)
-    status: Optional[str] = Field(None, regex="^(draft|scheduled|running|paused|completed|cancelled)$")
+    status: Optional[str] = Field(None, pattern="^(draft|scheduled|running|paused|completed|cancelled)$")
     script_template: Optional[str] = None
 
 
@@ -135,11 +135,11 @@ class CampaignContactResponse(BaseModel):
 
 class CampaignScheduleCreateRequest(BaseModel):
     campaign_id: str
-    schedule_type: str = Field(..., regex="^(daily|weekly|monthly|custom)$")
+    schedule_type: str = Field(..., pattern="^(daily|weekly|monthly|custom)$")
     start_date: datetime
     end_date: Optional[datetime] = None
-    daily_start_time: str = Field(..., regex="^([01]?[0-9]|2[0-3]):[0-5][0-9]$")
-    daily_end_time: str = Field(..., regex="^([01]?[0-9]|2[0-3]):[0-5][0-9]$")
+    daily_start_time: str = Field(..., pattern="^([01]?[0-9]|2[0-3]):[0-5][0-9]$")
+    daily_end_time: str = Field(..., pattern="^([01]?[0-9]|2[0-3]):[0-5][0-9]$")
     daily_max_calls: Optional[int] = Field(None, ge=1, le=10000)
     monday_enabled: bool = Field(default=True)
     tuesday_enabled: bool = Field(default=True)

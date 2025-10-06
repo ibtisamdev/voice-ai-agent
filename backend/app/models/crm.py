@@ -40,7 +40,7 @@ class CRMSyncJob(Base, TimestampMixin):
     records_successful = Column(Integer, default=0)
     records_failed = Column(Integer, default=0)
     error_message = Column(Text, nullable=True)
-    metadata = Column(JSON, nullable=True)
+    job_metadata = Column(JSON, nullable=True)
     
     # Relationships
     account = relationship("CRMAccount", back_populates="sync_jobs")
@@ -151,7 +151,7 @@ class LeadActivity(Base, TimestampMixin):
     last_synced_at = Column(DateTime(timezone=True), nullable=True)
     
     created_by = Column(String(100), nullable=True)  # user_id or "system"
-    metadata = Column(JSON, nullable=True)
+    job_metadata = Column(JSON, nullable=True)
     
     # Relationships
     lead = relationship("Lead", back_populates="activities")
@@ -228,15 +228,4 @@ class CRMWebhook(Base, TimestampMixin):
 # Import Campaign model (will be created in campaign.py)
 from sqlalchemy import Table
 
-# This will be properly imported once campaign.py is created
-# For now, we'll create a simple placeholder
-class Campaign(Base, TimestampMixin):
-    """Placeholder for Campaign model - will be implemented in campaign.py"""
-    __tablename__ = "campaigns"
-    
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    name = Column(String(255), nullable=False)
-    status = Column(String(50), default="draft")
-    
-    # Relationships
-    leads = relationship("Lead", back_populates="campaign")
+# Campaign model is imported from campaign.py

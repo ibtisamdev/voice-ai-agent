@@ -20,7 +20,7 @@ from ...core.config import settings
 from ...models.telephony import CallRecord, CallEvent, SIPAccount, CallQueue, QueueMember
 from ...models.crm import Lead
 from ...services.call_service import call_service
-from ....telephony.sip_gateway import sip_gateway
+from telephony.sip_gateway import sip_gateway
 
 router = APIRouter(prefix="/telephony", tags=["Telephony"])
 
@@ -33,7 +33,7 @@ class SIPAccountCreateRequest(BaseModel):
     domain: str = Field(..., min_length=1, max_length=255)
     server: str = Field(..., min_length=1, max_length=255)
     port: int = Field(default=5060, ge=1, le=65535)
-    transport: str = Field(default="UDP", regex="^(UDP|TCP|TLS)$")
+    transport: str = Field(default="UDP", pattern="^(UDP|TCP|TLS)$")
     max_concurrent_calls: int = Field(default=10, ge=1, le=100)
 
 
@@ -98,7 +98,7 @@ class CallQueueCreateRequest(BaseModel):
     description: Optional[str] = None
     max_wait_time: int = Field(default=300, ge=30, le=3600)
     max_queue_size: int = Field(default=50, ge=1, le=500)
-    routing_strategy: str = Field(default="round_robin", regex="^(round_robin|longest_idle|random)$")
+    routing_strategy: str = Field(default="round_robin", pattern="^(round_robin|longest_idle|random)$")
     overflow_destination: Optional[str] = Field(None, max_length=255)
 
 

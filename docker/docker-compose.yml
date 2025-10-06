@@ -14,7 +14,7 @@ services:
       - postgres_data:/var/lib/postgresql/data
       - ./init.sql:/docker-entrypoint-initdb.d/init.sql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U voiceai"]
+      test: ["CMD-SHELL", "pg_isready -U voiceai -d voiceai_db"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -47,6 +47,7 @@ services:
       - ../backend:/app
       - ../ai:/app/ai
       - ../tests:/app/tests
+      - ../telephony:/app/telephony
       - whisper_models:/app/models/whisper
       - tts_models:/app/models/tts
       - audio_cache:/app/cache/audio
@@ -141,6 +142,7 @@ services:
     volumes:
       - ../backend:/app
       - ../ai:/app/ai
+      - ../telephony:/app/telephony
     environment:
       DATABASE_URL: postgresql://voiceai:voiceai_dev@postgres:5432/voiceai_db
       REDIS_URL: redis://redis:6379
@@ -168,10 +170,9 @@ services:
       context: ../backend
       dockerfile: Dockerfile
     container_name: voiceai_celery_beat
-    command: celery -A app.core.celery beat --loglevel=info
+    command: sh -c "mkdir -p /tmp/celerybeat && celery -A app.core.celery beat --loglevel=info --schedule=/tmp/celerybeat/schedule"
     volumes:
       - ../backend:/app
-      - celery_beat_data:/app/celerybeat-data
     environment:
       DATABASE_URL: postgresql://voiceai:voiceai_dev@postgres:5432/voiceai_db
       REDIS_URL: redis://redis:6379
@@ -226,7 +227,6 @@ volumes:
   whisper_models:
   tts_models:
   audio_cache:
-  celery_beat_data:
 
 networks:
   voiceai_network:

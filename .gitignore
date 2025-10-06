@@ -84,6 +84,7 @@ data/
 cache/
 models/whisper/
 models/tts/
+backend/models/
 debug/audio/
 
 # Jupyter Notebook

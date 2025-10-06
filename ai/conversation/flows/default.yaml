@@ -1,68 +1,106 @@
+id: default
 name: "Legal Consultation Default Flow"
 version: "1.0"
 description: "Basic flow for legal consultation intake"
 
+start_node: greeting
+
 nodes:
-  - id: "greeting"
-    type: "response"
-    content: "Hello! I'm your AI legal assistant. How can I help you today?"
-    next: "intent_classification"
+  greeting:
+    type: message
+    name: "Greeting"
+    message: "Hello! I'm your AI legal assistant. How can I help you today?"
+    next_node: intent_classification
     
-  - id: "intent_classification"
-    type: "intent"
-    intents:
-      - "legal_consultation"
-      - "appointment_booking"
-      - "general_inquiry"
-    default: "general_inquiry"
+  intent_classification:
+    type: condition
+    name: "Intent Classification"
+    conditions:
+      - condition: "intent == 'legal_consultation'"
+        next_node: legal_consultation_node
+      - condition: "intent == 'appointment_booking'"
+        next_node: appointment_booking_node
+    default_node: general_inquiry_node
     
-  - id: "legal_consultation"
-    type: "response"
-    content: "I understand you need legal consultation. Can you briefly describe your legal matter?"
-    next: "collect_details"
+  legal_consultation_node:
+    type: message
+    name: "Legal Consultation"
+    message: "I understand you need legal consultation. Can you briefly describe your legal matter?"
+    next_node: collect_details
     
-  - id: "appointment_booking"
-    type: "response"
-    content: "I'd be happy to help you schedule an appointment. What type of legal service do you need?"
-    next: "collect_appointment_details"
+  appointment_booking_node:
+    type: message
+    name: "Appointment Booking"
+    message: "I'd be happy to help you schedule an appointment. What type of legal service do you need?"
+    next_node: collect_appointment_details
     
-  - id: "general_inquiry"
-    type: "response"
-    content: "I'm here to help with legal matters. Could you please be more specific about what you need assistance with?"
-    next: "intent_classification"
+  general_inquiry_node:
+    type: message
+    name: "General Inquiry"
+    message: "I'm here to help with legal matters. Could you please be more specific about what you need assistance with?"
+    next_node: intent_classification
     
-  - id: "collect_details"
-    type: "slot_filling"
-    slots:
-      - name: "case_type"
-        prompt: "What type of legal case is this?"
-        required: true
-      - name: "urgency"
-        prompt: "How urgent is this matter?"
-        required: false
-    next: "summary"
+  collect_details:
+    type: slot_fill
+    name: "Collect Case Details"
+    slot:
+      name: case_type
+      type: text
+      prompt: "What type of legal case is this? (e.g., personal injury, contract dispute, family law)"
+      required: true
+    next_node: collect_urgency
     
-  - id: "collect_appointment_details"
-    type: "slot_filling"
-    slots:
-      - name: "preferred_date"
-        prompt: "What date would work best for you?"
-        required: true
-      - name: "preferred_time"
-        prompt: "What time of day would you prefer?"
-        required: true
-    next: "appointment_confirmation"
+  collect_urgency:
+    type: slot_fill
+    name: "Collect Urgency"
+    slot:
+      name: urgency
+      type: text
+      prompt: "How urgent is this matter? (e.g., immediate, within a week, no rush)"
+      required: false
+    next_node: summary
     
-  - id: "summary"
-    type: "response"
-    content: "Thank you for the information. I'll connect you with the appropriate legal specialist. Is there anything else I can help you with?"
-    next: "end"
+  collect_appointment_details:
+    type: slot_fill
+    name: "Collect Preferred Date"
+    slot:
+      name: preferred_date
+      type: text
+      prompt: "What date would work best for you?"
+      required: true
+    next_node: collect_time
     
-  - id: "appointment_confirmation"
-    type: "response"
-    content: "Perfect! I'll schedule your appointment and send you a confirmation. Is there anything else I can help you with today?"
-    next: "end"
+  collect_time:
+    type: slot_fill
+    name: "Collect Preferred Time"
+    slot:
+      name: preferred_time
+      type: text
+      prompt: "What time of day would you prefer? (morning, afternoon, or evening)"
+      required: true
+    next_node: appointment_confirmation
     
-  - id: "end"
-    type: "end"
-    content: "Thank you for contacting us. Have a great day!"
+  summary:
+    type: message
+    name: "Summary"
+    message: "Thank you for the information. I'll connect you with the appropriate legal specialist. Is there anything else I can help you with?"
+    next_node: check_continue
+    
+  appointment_confirmation:
+    type: message
+    name: "Appointment Confirmation"
+    message: "Perfect! I'll schedule your appointment and send you a confirmation. Is there anything else I can help you with today?"
+    next_node: check_continue
+    
+  check_continue:
+    type: condition
+    name: "Check Continue"
+    conditions:
+      - condition: "user_wants_more_help"
+        next_node: intent_classification
+    default_node: end
+    
+  end:
+    type: end
+    name: "End"
+    message: "Thank you for contacting us. Have a great day!"

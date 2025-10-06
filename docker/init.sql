@@ -6,6 +6,10 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE EXTENSION IF NOT EXISTS "pg_trgm";  -- For text similarity searches
 CREATE EXTENSION IF NOT EXISTS "btree_gin"; -- For optimized indexing
 
+-- Create fallback database if application tries to connect to 'voiceai' instead of 'voiceai_db'
+CREATE DATABASE voiceai;
+GRANT ALL PRIVILEGES ON DATABASE voiceai TO voiceai;
+
 -- Create test database for development and testing
 CREATE DATABASE voiceai_test_db;
 GRANT ALL PRIVILEGES ON DATABASE voiceai_test_db TO voiceai;

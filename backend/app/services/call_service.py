@@ -21,7 +21,7 @@ from ..models.telephony import CallRecord, CallEvent, SIPAccount, CallQueue, Que
 from ..models.crm import Lead, LeadActivity
 from ..models.campaign import Campaign, CampaignContact
 from .lead_service import lead_service
-from ...telephony.sip_gateway import sip_gateway, CallInfo, CallState
+from telephony.sip_gateway import sip_gateway, CallInfo, CallState
 
 logger = logging.getLogger(__name__)
 

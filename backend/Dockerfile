@@ -19,6 +19,8 @@ RUN apt-get update \
         libasound2-dev \
         portaudio19-dev \
         libportaudio2 \
+        # TTS engine
+        espeak-ng \
         # Audio codec support
         libavcodec-extra \
         libavformat-dev \

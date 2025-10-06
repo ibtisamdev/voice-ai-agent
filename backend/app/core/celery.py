@@ -42,7 +42,6 @@ celery_app.conf.update(
     
     # Periodic tasks (optional - for future scheduled tasks)
     beat_schedule={},
-    beat_schedule_filename='/app/celerybeat-data/schedule',
 )
 
 # Make celery instance available for import

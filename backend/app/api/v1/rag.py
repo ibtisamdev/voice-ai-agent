@@ -13,7 +13,7 @@ import json
 
 from ai.rag.rag_service import rag_service, RAGServiceError
 from ai.rag.chunking_strategies import ChunkingStrategy
-from backend.app.core.logging import get_logger
+from app.core.logging import get_logger
 
 logger = get_logger(__name__)
 router = APIRouter()

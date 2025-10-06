@@ -111,7 +111,7 @@ class CallRecord(Base, TimestampMixin):
     # Custom Fields and Metadata
     tags = Column(JSON, nullable=True)
     custom_fields = Column(JSON, nullable=True)
-    metadata = Column(JSON, nullable=True)
+    call_metadata = Column(JSON, nullable=True)
     
     # Relationships
     sip_account = relationship("SIPAccount", back_populates="call_records")
@@ -272,4 +272,5 @@ class QueueCall(Base, TimestampMixin):
 
 
 # Import models that this depends on
-from .crm import Campaign, Lead
+from .crm import Lead
+from .campaign import Campaign

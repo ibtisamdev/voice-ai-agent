@@ -81,7 +81,7 @@ class Campaign(Base, TimestampMixin, SoftDeleteMixin):
     # Custom Fields and Metadata
     tags = Column(JSON, nullable=True)
     custom_fields = Column(JSON, nullable=True)
-    metadata = Column(JSON, nullable=True)
+    campaign_metadata = Column(JSON, nullable=True)
     
     # Relationships
     leads = relationship("Lead", back_populates="campaign")

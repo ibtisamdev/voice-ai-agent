@@ -53,7 +53,7 @@ class LeadCreateRequest(BaseModel):
     source: str = Field(default="api", max_length=50)
     legal_issue: Optional[str] = None
     practice_areas: Optional[List[str]] = None
-    urgency_level: str = Field(default="normal", regex="^(low|normal|high|emergency)$")
+    urgency_level: str = Field(default="normal", pattern="^(low|normal|high|emergency)$")
     notes: Optional[str] = None
 
 
@@ -64,10 +64,10 @@ class LeadUpdateRequest(BaseModel):
     phone: Optional[str] = Field(None, max_length=50)
     company: Optional[str] = Field(None, max_length=255)
     title: Optional[str] = Field(None, max_length=100)
-    status: Optional[str] = Field(None, regex="^(new|contacted|qualified|converted|lost)$")
+    status: Optional[str] = Field(None, pattern="^(new|contacted|qualified|converted|lost)$")
     legal_issue: Optional[str] = None
     practice_areas: Optional[List[str]] = None
-    urgency_level: Optional[str] = Field(None, regex="^(low|normal|high|emergency)$")
+    urgency_level: Optional[str] = Field(None, pattern="^(low|normal|high|emergency)$")
     notes: Optional[str] = None
 
 
@@ -100,11 +100,11 @@ class AppointmentCreateRequest(BaseModel):
     lead_id: str
     title: str = Field(..., min_length=1, max_length=255)
     description: Optional[str] = None
-    appointment_type: str = Field(..., regex="^(consultation|follow_up|meeting)$")
+    appointment_type: str = Field(..., pattern="^(consultation|follow_up|meeting)$")
     scheduled_start: datetime
     scheduled_end: datetime
     attorney_name: Optional[str] = Field(None, max_length=255)
-    meeting_type: str = Field(default="in_person", regex="^(in_person|phone|video)$")
+    meeting_type: str = Field(default="in_person", pattern="^(in_person|phone|video)$")
     location: Optional[str] = Field(None, max_length=500)
     notes: Optional[str] = None
 

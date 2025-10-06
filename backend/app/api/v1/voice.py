@@ -19,8 +19,8 @@ from pydantic import BaseModel, Field, validator
 from ai.voice import audio_processor, stt_service, tts_service
 from ai.conversation import conversation_state_manager, dialog_flow_engine
 from ai.decision_engine import intent_classifier
-from backend.app.core.config import settings
-from backend.app.core.logging import get_logger
+from app.core.config import settings
+from app.core.logging import get_logger
 
 logger = get_logger(__name__)
 router = APIRouter()

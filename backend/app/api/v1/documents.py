@@ -19,8 +19,8 @@ import shutil
 from ai.rag.rag_service import rag_service, DocumentIngestionResult, RAGServiceError
 from ai.rag.document_processor import document_processor, DocumentProcessingError
 from ai.rag.chunking_strategies import ChunkingStrategy
-from backend.app.core.config import settings
-from backend.app.core.logging import get_logger
+from app.core.config import settings
+from app.core.logging import get_logger
 
 logger = get_logger(__name__)
 router = APIRouter()

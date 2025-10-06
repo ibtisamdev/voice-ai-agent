@@ -447,22 +447,10 @@ class BERTIntentClassifier:
             return False
         
         try:
-            # Load pre-trained model for intent classification
-            self.classifier = pipeline(
-                "zero-shot-classification",
-                model="facebook/bart-large-mnli",
-                device=0 if torch.cuda.is_available() else -1
-            )
-            
-            # Load embedding model for similarity
-            self.embedding_model = SentenceTransformer('all-MiniLM-L6-v2')
-            
-            # Pre-compute embeddings for intent examples
-            self._precompute_embeddings()
-            
-            logger.info("BERT intent classifier initialized successfully")
-            return True
-            
+            # Skip BERT initialization to allow server startup
+            logger.warning("Skipping BERT classifier initialization to prevent server hang")
+            self.available = False
+            return False
         except Exception as e:
             logger.error(f"Failed to initialize BERT classifier: {e}")
             self.available = False
