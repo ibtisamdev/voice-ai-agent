@@ -39,7 +39,7 @@ class Settings(BaseSettings):
     LOG_FORMAT: str = "json"
     
     # LLM Configuration
-    OLLAMA_HOST: str = "http://localhost:11434"
+    OLLAMA_BASE_URL: str = "http://localhost:11434"
     OLLAMA_MODEL: str = "llama2:7b-chat"
     OLLAMA_TEMPERATURE: float = 0.7
     OLLAMA_MAX_TOKENS: int = 2048

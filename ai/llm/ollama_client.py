@@ -29,7 +29,7 @@ class OllamaClient:
     """Async client for Ollama LLM inference."""
     
     def __init__(self, host: str = None, timeout: int = None):
-        self.host = host or settings.OLLAMA_HOST
+        self.host = host or settings.OLLAMA_BASE_URL
         self.timeout = timeout or settings.OLLAMA_TIMEOUT
         self.session: Optional[aiohttp.ClientSession] = None
         
