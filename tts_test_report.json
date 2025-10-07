@@ -1,0 +1,81 @@
+{
+  "docker_environment": {
+    "in_docker": true,
+    "app_directory": true,
+    "models_directory": true,
+    "cache_directory": true,
+    "requirements_file": true,
+    "backend_directory": false,
+    "ai_directory": true
+  },
+  "dependencies": {
+    "system_ffmpeg": {
+      "available": true
+    },
+    "system_espeak": {
+      "available": false
+    },
+    "system_alsa": {
+      "available": true
+    },
+    "torch": {
+      "available": true,
+      "version": "2.1.0",
+      "cuda_available": false,
+      "device": "cpu"
+    },
+    "torchaudio": {
+      "available": true,
+      "version": "2.1.0"
+    },
+    "TTS": {
+      "available": false,
+      "error": "TTS.list_models() missing 1 required positional argument: 'self'"
+    },
+    "pyttsx3": {
+      "available": true,
+      "voice_count": 141
+    },
+    "azure.cognitiveservices.speech": {
+      "available": true,
+      "version": "1.46.0"
+    }
+  },
+  "import_test": {
+    "success": true,
+    "tts_service_available": true,
+    "engines_available": [
+      "CoquiTTSEngine",
+      "SystemTTSEngine"
+    ]
+  },
+  "engine_tests": {
+    "pyttsx3": {
+      "success": false,
+      "error": "Output file not created"
+    },
+    "application_tts": {
+      "success": true,
+      "available_engines": [
+        "pyttsx3"
+      ],
+      "voice_count": 141,
+      "synthesis_result": {
+        "engine": "pyttsx3",
+        "duration_ms": 2520,
+        "processing_time_ms": 11.689424514770508,
+        "audio_format": "wav",
+        "sample_rate": 22050
+      }
+    }
+  },
+  "summary": {
+    "working_engines": [
+      "application_tts"
+    ],
+    "failing_engines": [
+      "pyttsx3"
+    ],
+    "total_engines": 2
+  }
+}
