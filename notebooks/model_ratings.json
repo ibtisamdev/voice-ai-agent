@@ -1,0 +1,32 @@
+{
+  "glow-tts": [
+    {
+      "naturalness": 4,
+      "clarity": 5,
+      "speed_feel": 4,
+      "overall": 3.67,
+      "notes": "Fast, clear, slightly robotic at normal speed",
+      "timestamp": "2025-10-07T13:39:03.204826"
+    }
+  ],
+  "tacotron2-ddc": [
+    {
+      "naturalness": 4,
+      "clarity": 4,
+      "speed_feel": 4,
+      "overall": 3.33,
+      "notes": "Very fast synthesis, good quality",
+      "timestamp": "2025-10-07T13:39:03.207139"
+    }
+  ],
+  "fast_pitch": [
+    {
+      "naturalness": 3,
+      "clarity": 4,
+      "speed_feel": 4,
+      "overall": 3.0,
+      "notes": "Good prosody, slightly less natural",
+      "timestamp": "2025-10-07T13:39:03.208217"
+    }
+  ]
+}

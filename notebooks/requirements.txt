@@ -1,0 +1,29 @@
+# Jupyter and Notebook Environment
+jupyter
+jupyterlab
+ipykernel
+
+# Data Analysis
+pandas
+numpy
+
+# Visualization
+matplotlib
+seaborn
+
+# Database Connectivity
+sqlalchemy
+psycopg2-binary
+redis
+
+# HTTP Requests
+requests
+
+# Voice Processing & TTS
+TTS
+torch
+torchaudio
+phonemizer  # Required for VITS model with espeak-ng backend
+librosa     # Audio processing for speed control
+soundfile   # Audio file I/O
+transformers==4.33.0  # Compatible version for XTTS_v2 BeamSearchScorer

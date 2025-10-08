@@ -132,20 +132,29 @@ class CoquiTTSEngine:
         if not self.available:
             logger.warning("Coqui TTS not available")
             return False
-        
+
         try:
             # Set environment variable to accept Coqui license non-interactively
             import os
             os.environ["COQUI_TOS_AGREED"] = "1"
-            
+
+            # Fix for PyTorch 2.6+ weights_only=True security changes
+            # Add XTTS and other TTS config classes to safe globals
+            try:
+                from TTS.tts.configs.xtts_config import XttsConfig, XttsAudioConfig
+                torch.serialization.add_safe_globals([XttsConfig, XttsAudioConfig])
+                logger.info("Added XTTS classes to PyTorch safe globals")
+            except ImportError:
+                logger.debug("Could not import XTTS config classes (not needed for basic models)")
+
             # Use simplest working Coqui model
             model_name = "tts_models/en/ljspeech/speedy-speech"
             self.model = TTS(model_name=model_name).to(self.device)
             self.models["en"] = self.model
-            
+
             logger.info(f"Coqui TTS initialized with model: {model_name}")
             return True
-            
+
         except Exception as e:
             logger.error(f"Failed to initialize Coqui TTS: {e}")
             self.available = False
